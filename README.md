@@ -1,5 +1,5 @@
-# IDCTechTalkSpeakers
+# IDC Tech Talk Speakers
 
 Speakers for tech talk include:
 
--Manish Prabhu
+1. Manish Prabhu
