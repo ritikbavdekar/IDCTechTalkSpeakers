@@ -2,4 +2,4 @@
 
 Speakers for tech talk include:
 
-1. Manish Prabhu
+1. Manish Prabhu!
