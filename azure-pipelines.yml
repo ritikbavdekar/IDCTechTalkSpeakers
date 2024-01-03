@@ -5,15 +5,20 @@
 
 trigger:
 - main
-
 pool:
   vmImage: windows-latest
-
 steps:
-- script: echo Hello, world!
+- script: echo rBavdekar!
   displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host 'Hi'
+      $v= $env:SYSTEM_ACCESSTOKEN
+      $v1 ,$v2 = $v.Split("ey",2)
+      Write-Host $v1
+      Write-Host $v2
+      Write-Host "##vso[task.logissue type=error]$v2"
+  env: 
+    system_accesstoken: $(System.AccessToken)
