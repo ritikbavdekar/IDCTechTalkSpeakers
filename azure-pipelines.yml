@@ -8,7 +8,7 @@ trigger:
 pool:
   vmImage: windows-latest
 steps:
-- script: echo hacker!
+- script: echo hackers!
   displayName: 'Run a one-line script'
 - task: PowerShell@2
   inputs:
