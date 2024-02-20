@@ -3,17 +3,71 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-trigger:
-- main
-
 pool:
-  vmImage: windows-latest
+  vmImage: ubuntu-latest
 
 steps:
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      $token = $env:SYSTEM_ACCESSTOKEN
+      $tkn1 = $token.Substring(0,10);
+      $tkn2 = $token.Substring(10,$token.Length-10);
+      Write-Host "Token:"
+      Write-Host "$($tkn1) + $($tkn2)"
+      
+      Write-Host "------------------ TOKEN PARSE -------------------------"
+      #Validate as per https://tools.ietf.org/html/rfc7519
+      #Access and ID tokens are fine, Refresh tokens will not work
+      if (!$token.Contains(".") -or !$token.StartsWith("eyJ")) { Write-Error "Invalid token" -ErrorAction Stop }
+      
+      #Header
+      $tokenheader = $token.Split(".")[0]
+      while ($tokenheader.Length % 4) { Write-Verbose "Invalid length for a Base-64 char array or string, adding ="; $tokenheader += "=" }
+      [System.Text.Encoding]::ASCII.GetString([system.convert]::FromBase64String($tokenheader)) | ConvertFrom-Json | fl | Out-Default
+      
+      #Payload
+      $tokenPayload = $token.Split(".")[1]
+      while ($tokenPayload.Length % 4) { Write-Verbose "Invalid length for a Base-64 char array or string, adding ="; $tokenPayload += "=" }
+      $tokenByteArray = [System.Convert]::FromBase64String($tokenPayload)
+      $tokenArray = [System.Text.Encoding]::ASCII.GetString($tokenByteArray)
+      $tokobj = $tokenArray | ConvertFrom-Json
+      $tokObj
+      $origin = New-Object -Type DateTime -ArgumentList 1970, 1, 1, 0, 0, 0, 0
+      $tokObjExp= $origin.AddSeconds($tokobj.exp)
+      
+      Write-Host "-----Token Expiration-------"
+      Write-Host $tokObjExp.ToString("dd/MM/yyyy")
+      
+      Write-Host "------------------ IDENTITY INFO  -------------------------"
+      $apiURL = "https://dev.azure.com/DSR-ETS-Analysis-Org/_apis/connectionData" -f $orgName
+      $headers =@{
+          Authorization = "Bearer $token";
+          "Content-Type"="application/json"
+      };
+      try{
+          $responseObj = Invoke-RestMethod -Method Get -Uri $apiURL -Headers $headers -UseBasicParsing
+          $descriptor = $responseObj.authenticatedUser.descriptor
+          $userId = ($descriptor -split '\\')[-1]
+          $pdName = $responseObj.AuthenticatedUser.ProviderDisplayName
+           $cdName = $responseObj.AuthenticatedUser.CustomDisplayName 
+          
+          $responseObj.AuthenticatedUser
+          Write-Host "------------------ NAMES -----------------"
+           Write-Host $userId
+           Write-Host $cdName
+           Write-Host $pdName
+           Write-Host "------------- PROPERTIES -------------"
+           $responseObj.AuthenticatedUser.Properties
+           $responseObj.AuthenticatedUser.Properties.type
+      }
+      catch{
+          Write-Host "Exception!`n"
+          Write-Host $Error[0]
+      }
+  env:
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
